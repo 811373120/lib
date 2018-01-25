@@ -86,7 +86,6 @@ buffered_on_read(struct bufferevent *bev, void *arg)
 			/* Done. */
 			break;
 		}
-		3333
 		/* Send data to all connected clients except for the
 		* client that sent the data. */
 
