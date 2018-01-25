@@ -1,2 +1,2 @@
 test : test.o
-	g++ test.cpp -o test
+	g++ -Wall test.cpp -o test -L. -levent -levent_core

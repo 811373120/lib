@@ -4,13 +4,22 @@
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <sys/queue.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/types.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <errno.h>
+struct event_base* evbase;
+
 void buffered_on_read(struct bufferevent *bev, void *arg);
+void buffered_on_error(int fd, short ev, void *arg);
 void on_accept(int fd, short ev, void *arg);
 int setnonblock(int fd) {
 	int flags = fcntl(fd, F_GETFL, 0);
 	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 	return 1;
-}222
+}
 struct client {
 	/* The clients socket. */
 	int fd;
@@ -23,6 +32,7 @@ struct client {
 	*/
 	TAILQ_ENTRY(client) entries;
 };
+TAILQ_HEAD(, client) client_tail_head;
 void
 on_accept(int fd, short ev, void *arg)
 {
@@ -33,30 +43,30 @@ on_accept(int fd, short ev, void *arg)
 
 	client_fd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
 	if (client_fd < 0) {
-		warn("accept failed");
+		//printf("accept failed");
 		return;
 	}
 
 	/* Set the client socket to non-blocking mode. */
 	if (setnonblock(client_fd) < 0)
-		warn("failed to set client socket non-blocking");
+		printf("failed to set client socket non-blocking");
 
 	/* We've accepted a new client, create a client object. */
-	client = calloc(1, sizeof(*client));
+	client = (struct client *)calloc(1, sizeof(*client));
 	if (client == NULL)
-		err(1, "malloc failed");
+		printf("malloc failed");
 	client->fd = client_fd;
 
 	client->buf_ev = bufferevent_socket_new(evbase, client_fd, 0);
 	bufferevent_setcb(client->buf_ev, buffered_on_read, NULL,
-		buffered_on_error, client);
+		NULL, client);
 
 	/* We have to enable it before our callbacks will be
 	* called. */
 	bufferevent_enable(client->buf_ev, EV_READ);
 
 	/* Add the new client to the tailq. */
-	TAILQ_INSERT_TAIL(&client_tailq_head, client, entries);
+	TAILQ_INSERT_TAIL(&client_tail_head, client, entries);
 
 	printf("Accepted connection from %s\n",
 		inet_ntoa(client_addr.sin_addr));
@@ -64,7 +74,7 @@ on_accept(int fd, short ev, void *arg)
 void
 buffered_on_read(struct bufferevent *bev, void *arg)
 {
-	struct client *this_client = arg;
+	struct client *this_client = (struct client *)arg;
 	struct client *client;
 	uint8_t data[8192];
 	size_t n;
@@ -80,7 +90,7 @@ buffered_on_read(struct bufferevent *bev, void *arg)
 		/* Send data to all connected clients except for the
 		* client that sent the data. */
 
-		TAILQ_FOREACH(client, &client_tailq_head, entries) {
+		TAILQ_FOREACH(client, &client_tail_head, entries) {
 			if (client != this_client) {
 				bufferevent_write(client->buf_ev, data, n);
 			}
@@ -99,12 +109,12 @@ int main()
 	evbase = event_base_new();
 
 	/* Initialize the tailq. */
-	TAILQ_INIT(&client_tailq_head);
+	TAILQ_INIT(&client_tail_head);
 
 	/* Create our listening socket. */
 	listen_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_fd < 0)
-		err(1, "listen failed");
+		printf("listen failed");
 	memset(&listen_addr, 0, sizeof(listen_addr));
 	listen_addr.sin_family = AF_INET;
 	listen_addr.sin_addr.s_addr = INADDR_ANY;
@@ -112,9 +122,9 @@ int main()
 
 	if (bind(listen_fd, (struct sockaddr *)&listen_addr,
 		sizeof(listen_addr)) < 0)
-		err(1, "bind failed");
+		printf("bind failed");
 	if (listen(listen_fd, 5) < 0)
-		err(1, "listen failed");
+		printf("listen failed");
 	reuseaddr_on = 1;
 	setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_on,
 		sizeof(reuseaddr_on));
@@ -122,7 +132,7 @@ int main()
 	/* Set the socket to non-blocking, this is essential in event
 	* based programming with libevent. */
 	if (setnonblock(listen_fd) < 0)
-		err(1, "failed to set server socket to non-blocking");
+		printf("failed to set server socket to non-blocking");
 
 	/* We now have a listening socket, we create a read event to
 	* be notified when a client connects. */
