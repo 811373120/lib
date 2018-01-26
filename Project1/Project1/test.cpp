@@ -127,7 +127,6 @@ int main()
 	reuseaddr_on = 1;
 	setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_on,
 		sizeof(reuseaddr_on));
-	111
 	/* Set the socket to non-blocking, this is essential in event
 	* based programming with libevent. */
 	if (setnonblock(listen_fd) < 0)
