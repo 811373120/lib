@@ -11,7 +11,6 @@
 #include <arpa/inet.h>
 #include <errno.h>
 struct event_base* evbase;
-
 void buffered_on_read(struct bufferevent *bev, void *arg);
 void buffered_on_error(int fd, short ev, void *arg);
 void on_accept(int fd, short ev, void *arg);
