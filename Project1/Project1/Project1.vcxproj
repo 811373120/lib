@@ -70,7 +70,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)libevent-2.1.8-stable\libevent-2.1.8-stable\include;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)include;$(SolutionDir)libevent-2.1.8-stable\libevent-2.1.8-stable\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

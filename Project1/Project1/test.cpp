@@ -116,7 +116,7 @@ buffered_on_read(struct bufferevent *bev, void *arg)
 }
 void handle_pipe(int sig)
 {
-	//不做任何处理即可
+	//忽略pip信号
 }
 int main()
 {
