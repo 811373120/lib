@@ -10,15 +10,9 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <signal.h>
 struct event_base* evbase;
-void buffered_on_read(struct bufferevent *bev, void *arg);
-void buffered_on_error(int fd, short ev, void *arg);
-void on_accept(int fd, short ev, void *arg);
-int setnonblock(int fd) {
-	int flags = fcntl(fd, F_GETFL, 0);
-	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-	return 1;
-}
+TAILQ_HEAD(, client) client_tail_head;
 struct client {
 	/* The clients socket. */
 	int fd;
@@ -31,7 +25,34 @@ struct client {
 	*/
 	TAILQ_ENTRY(client) entries;
 };
-TAILQ_HEAD(, client) client_tail_head;
+void buffered_on_read(struct bufferevent *bev, void *arg);
+void buffered_on_error(struct bufferevent *bev, short ev, void *arg);
+void on_accept(int fd, short ev, void *arg);
+void buffered_on_error(struct bufferevent *bev, short ev, void *arg)
+{
+	struct client * client = (struct client *)arg;
+	if (ev &BEV_EVENT_TIMEOUT)
+	{
+		perror("libevent on_error timeout");
+	}
+	else if (ev & BEV_EVENT_EOF)
+	{
+		perror("client close");
+	}
+	else
+	{
+		perror("other error");
+	}
+	bufferevent_free(bev);
+	TAILQ_REMOVE(&client_tail_head,client,entries);
+}
+int setnonblock(int fd) {
+	int flags = fcntl(fd, F_GETFL, 0);
+	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+	return 1;
+}
+
+
 void
 on_accept(int fd, short ev, void *arg)
 {
@@ -58,7 +79,7 @@ on_accept(int fd, short ev, void *arg)
 
 	client->buf_ev = bufferevent_socket_new(evbase, client_fd, 0);
 	bufferevent_setcb(client->buf_ev, buffered_on_read, NULL,
-		NULL, client);
+		buffered_on_error, client);
 
 	/* We have to enable it before our callbacks will be
 	* called. */
@@ -89,15 +110,22 @@ buffered_on_read(struct bufferevent *bev, void *arg)
 		* client that sent the data. */
 
 		TAILQ_FOREACH(client, &client_tail_head, entries) {
-			if (client != this_client) {
-				bufferevent_write(client->buf_ev, data, n);
-			}
+			bufferevent_write(client->buf_ev, data, n);
 		}
-
 	}
+}
+void handle_pipe(int sig)
+{
+	//不做任何处理即可
 }
 int main()
 {
+	struct sigaction action;
+	action.sa_handler = handle_pipe;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
+	sigaction(SIGPIPE, &action, NULL);
+
 	int listen_fd;
 	struct sockaddr_in listen_addr;
 	struct event ev_accept;
@@ -121,7 +149,7 @@ int main()
 	if (bind(listen_fd, (struct sockaddr *)&listen_addr,
 		sizeof(listen_addr)) < 0)
 		printf("bind failed");
-	if (listen(listen_fd, 5) < 0)
+	if (listen(listen_fd, 500) < 0)
 		printf("listen failed");
 	reuseaddr_on = 1;
 	setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_on,
@@ -140,7 +168,7 @@ int main()
 	/* Start the event loop. */
 	event_base_dispatch(evbase);
 
-
+	exit(0);
 
 	return 0;
 }
