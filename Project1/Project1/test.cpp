@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <signal.h>
+#include "./protocol/protoctest.pb.h"
 struct event_base* evbase;
 TAILQ_HEAD(, client) client_tail_head;
 struct client {
@@ -96,8 +97,9 @@ buffered_on_read(struct bufferevent *bev, void *arg)
 {
 	struct client *this_client = (struct client *)arg;
 	struct client *client;
-	uint8_t data[8192];
+	char data[8192];
 	size_t n;
+
 
 	/* Read 8k at a time and send it to all connected clients. */
 	for (;;) {
@@ -109,9 +111,18 @@ buffered_on_read(struct bufferevent *bev, void *arg)
 		/* Send data to all connected clients except for the
 		* client that sent the data. */
 
-		TAILQ_FOREACH(client, &client_tail_head, entries) {
-			bufferevent_write(client->buf_ev, data, n);
-		}
+		//TAILQ_FOREACH(client, &client_tail_head, entries) {
+		//	bufferevent_write(client->buf_ev, data, n);
+		//}
+		//std::cout << "dfasdf";
+		goprotobuf::HelloWorld hw;
+		char buf[1024];
+		data[n] = '\0';
+		std::string str = data;
+		hw.ParseFromString(str);
+		std::cout << hw.str()<<std::endl;
+		std::cout << hw.id()<<std::endl;
+		std::cout << hw.opt() << std::endl;
 	}
 }
 void handle_pipe(int sig)
