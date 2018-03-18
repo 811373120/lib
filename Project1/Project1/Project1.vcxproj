@@ -117,9 +117,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Base\AppFrame.cpp" />
     <ClCompile Include="client.cpp" />
     <ClCompile Include="t.cpp" />
     <ClCompile Include="test.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Base\AppFrame.h" />
+    <ClInclude Include="Base\SingletonBase.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

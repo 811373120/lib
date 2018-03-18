@@ -12,7 +12,8 @@
 #include <errno.h>
 #include <signal.h>
 #include "./protocol/protoctest.pb.h"
-struct event_base* evbase;
+
+struct event_base* evbase;  
 TAILQ_HEAD(, client) client_tail_head;
 struct client {
 	/* The clients socket. */
